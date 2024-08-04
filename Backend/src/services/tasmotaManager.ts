@@ -88,7 +88,6 @@ export class TasmotaManager extends EventEmitter {
 
   toggleDevice(deviceId: string, state: 'ON' | 'OFF'): { success: boolean; error?: string } {
     const device = this.devices.get(deviceId);
-    console.log(`cmnd/${deviceId}/POWER`, state);
 
     if (device) {
       device.state = state;
