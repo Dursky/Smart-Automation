@@ -9,8 +9,6 @@ export const register = async (req: Request, res: Response) => {
 
     const existingUser = await User.findOne({ username });
 
-    console.log(req.body);
-
     if (existingUser) {
       if (existingUser.username === username) {
         return res.status(400).json({ error: 'Username already exists' });

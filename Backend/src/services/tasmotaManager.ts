@@ -22,7 +22,7 @@ export class TasmotaManager extends EventEmitter {
   }
 
   private onConnect() {
-    console.log('Connected to MQTT broker');
+    console.log('-> Connected to MQTT broker');
     this.client.subscribe('tele/+/+');
     this.client.subscribe('stat/+/+');
     this.client.publish('cmnd/tasmotas/Status', '0');
@@ -86,19 +86,20 @@ export class TasmotaManager extends EventEmitter {
     return Array.from(this.devices.values());
   }
 
-  toggleDevice(idOrGroup: string, state: 'ON' | 'OFF'): void {
-    if (this.groupTopics.has(idOrGroup)) {
-      this.client.publish(`cmnd/${idOrGroup}/Power`, state);
+  toggleDevice(deviceId: string, state: 'ON' | 'OFF'): { success: boolean; error?: string } {
+    const device = this.devices.get(deviceId);
+    console.log(`cmnd/${deviceId}/POWER`, state);
+
+    if (device) {
+      device.state = state;
+
+      this.client.publish(`cmnd/${deviceId}/POWER`, state);
+      this.emit('deviceUpdated', device);
+      return { success: true };
     } else {
-      const device = this.devices.get(idOrGroup);
-      if (device) {
-        this.client.publish(`${device.topic}/Power`, state);
-      } else {
-        console.error(`Device or group with id ${idOrGroup} not found`);
-      }
+      return { success: false, error: `Device with id ${deviceId} not found` };
     }
   }
-
   executeScene(scene: IScene): void {
     scene.actions.forEach((action) => {
       this.toggleDevice(action.deviceId, action.state);

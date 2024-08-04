@@ -8,7 +8,7 @@ class MqttService {
     this.client = mqtt.connect(config.mqttBrokerUrl);
 
     this.client.on('connect', () => {
-      console.log('Connected to MQTT broker');
+      console.log('-> Connected to MQTT broker');
     });
 
     this.client.on('error', (error) => {
