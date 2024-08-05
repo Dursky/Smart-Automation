@@ -1,14 +1,14 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {View, FlatList, StyleSheet} from 'react-native';
 import {Device} from '../types';
 import {DeviceItem} from '../components/DeviceItem';
-import {getSocket} from '../services/socket';
+import {socketManager} from '../services/socket';
+import {Socket} from 'socket.io-client';
 
 export const DeviceListScreen = () => {
   const [devices, setDevices] = useState<Device[]>([]);
-  const socket = getSocket();
 
-  useEffect(() => {
+  const setupSocketListeners = useCallback((socket: Socket) => {
     socket.emit('getDevices');
 
     socket.on('deviceList', (deviceList: Device[]) => {
@@ -22,16 +22,37 @@ export const DeviceListScreen = () => {
         ),
       );
     });
+  }, []);
+
+  useEffect(() => {
+    let socket: Socket;
+
+    const initializeSocket = async () => {
+      try {
+        socket = await socketManager.initSocket();
+        setupSocketListeners(socket);
+      } catch (error) {
+        console.error('Error initializing socket:', error);
+      }
+    };
+
+    initializeSocket();
 
     return () => {
-      socket.off('deviceList');
-      socket.off('deviceUpdated');
+      if (socket) {
+        socket.off('deviceList');
+        socket.off('deviceUpdated');
+      }
     };
-  }, [socket]);
+  }, [setupSocketListeners]);
 
-  const toggleDevice = (deviceId: string, newState: 'ON' | 'OFF') => {
-    socket.emit('toggleDevice', JSON.stringify({deviceId, state: newState}));
-  };
+  const toggleDevice = useCallback(
+    (deviceId: string, newState: 'ON' | 'OFF') => {
+      const socket = socketManager.getSocket();
+      socket.emit('toggleDevice', JSON.stringify({deviceId, state: newState}));
+    },
+    [],
+  );
 
   return (
     <View style={styles.container}>

@@ -1,11 +1,15 @@
 import React, {useState, useContext} from 'react';
 import {View, TextInput, Button, StyleSheet, Alert} from 'react-native';
 import {AuthContext} from '../contexts/AuthContext';
+import {useNavigation} from '@react-navigation/native';
+import {NavigationProp} from '../types';
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const {signIn} = useContext(AuthContext);
+
+  const navigation = useNavigation<NavigationProp>();
 
   const handleLogin = async () => {
     try {
@@ -31,6 +35,10 @@ export const LoginScreen = () => {
         secureTextEntry
       />
       <Button title="Login" onPress={handleLogin} />
+      <Button
+        title="Back to Home"
+        onPress={() => navigation.navigate('Home')}
+      />
     </View>
   );
 };

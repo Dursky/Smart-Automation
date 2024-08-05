@@ -2,13 +2,15 @@ import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import {AuthProvider, AuthContext} from './contexts/AuthContext';
+import {HomeScreen} from './screens/HomeScreen';
 import {LoginScreen} from './screens/LoginScreen';
 import {RegisterScreen} from './screens/RegisterScreen';
 import {DeviceListScreen} from './screens/DeviceListScreen';
 import {SceneListScreen} from './screens/SceneListScreen';
 import {CreateSceneScreen} from './screens/CreateSceneScreen';
+import {RootStackParamList} from './types';
 
-const Stack = createStackNavigator();
+const Stack = createStackNavigator<RootStackParamList>();
 
 const App = () => {
   return (
@@ -16,6 +18,7 @@ const App = () => {
       <NavigationContainer>
         <AuthContext.Consumer>
           {({user, loading}) => {
+            console.log('user: ', user);
             if (loading) {
               return null; // Or a loading screen
             }
@@ -32,6 +35,11 @@ const App = () => {
                   </>
                 ) : (
                   <>
+                    <Stack.Screen
+                      name="Home"
+                      component={HomeScreen}
+                      options={{headerShown: false}}
+                    />
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="Register" component={RegisterScreen} />
                   </>

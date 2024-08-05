@@ -20,6 +20,7 @@ export interface User {
 }
 
 export type RootStackParamList = {
+  Home: undefined;
   Login: undefined;
   Register: undefined;
   Devices: undefined;

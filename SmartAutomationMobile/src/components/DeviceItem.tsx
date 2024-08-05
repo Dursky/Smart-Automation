@@ -1,6 +1,7 @@
 import React from 'react';
-import {View, Text, Switch, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet} from 'react-native';
 import {Device} from '../types';
+import Switch from './Switch';
 
 interface DeviceItemProps {
   device: Device;
@@ -8,9 +9,10 @@ interface DeviceItemProps {
 }
 
 export const DeviceItem: React.FC<DeviceItemProps> = ({device, onToggle}) => {
+  console.log(device);
   return (
     <View style={styles.container}>
-      <Text style={styles.name}>{device.name}</Text>
+      <Text style={styles.name}>{device.id}</Text>
       <Switch
         value={device.state === 'ON'}
         onValueChange={value => onToggle(device.id, value ? 'ON' : 'OFF')}

@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
@@ -16,6 +17,7 @@ const io = new Server(httpServer);
 mongoose.connect(config.mongoUri);
 
 app.use(express.json());
+app.use(cors());
 app.use('/api/auth', authRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/scenes', sceneRoutes);

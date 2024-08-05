@@ -1,31 +1,60 @@
-import io from 'socket.io-client';
+import io, {Socket} from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {TypedSocket} from '../types';
+import {API_URL} from './api';
 
-const SOCKET_URL = 'http://your-socket-url.com';
+class SocketManager {
+  private static instance: SocketManager;
+  private socket: Socket | null = null;
 
-let socket: TypedSocket;
+  private constructor() {}
 
-export const initSocket = async () => {
-  const token = await AsyncStorage.getItem('userToken');
-  socket = io(SOCKET_URL, {
-    query: {token},
-  });
-
-  socket.on('connect', () => {
-    console.log('Connected to WebSocket');
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Disconnected from WebSocket');
-  });
-
-  return socket;
-};
-
-export const getSocket = () => {
-  if (!socket) {
-    throw new Error('Socket is not initialized');
+  public static getInstance(): SocketManager {
+    if (!SocketManager.instance) {
+      SocketManager.instance = new SocketManager();
+    }
+    return SocketManager.instance;
   }
-  return socket;
-};
+
+  public async initSocket(): Promise<Socket> {
+    if (this.socket && this.socket.connected) {
+      return this.socket;
+    }
+
+    const token = await AsyncStorage.getItem('userToken');
+    console.log(token);
+    if (!token) {
+      throw new Error('No token found');
+    }
+
+    this.socket = io(API_URL, {
+      auth: {token},
+      transports: ['websocket'],
+    });
+
+    this.socket.on('connect', () => {
+      console.log('Connected to WebSocket');
+    });
+
+    this.socket.on('disconnect', () => {
+      console.log('Disconnected from WebSocket');
+    });
+
+    return this.socket;
+  }
+
+  public getSocket(): Socket {
+    if (!this.socket) {
+      throw new Error('Socket is not initialized');
+    }
+    return this.socket;
+  }
+
+  public closeSocket() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+  }
+}
+
+export const socketManager = SocketManager.getInstance();
