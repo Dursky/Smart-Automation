@@ -1,58 +1,29 @@
-import React, {useEffect, useState, useCallback} from 'react';
-import {View, FlatList, StyleSheet} from 'react-native';
-import {Device} from '../types';
+import React, {useEffect} from 'react';
+import {View, FlatList, StyleSheet, Text} from 'react-native';
+import {useSelector} from 'react-redux';
+import {RootState} from '../redux/store';
 import {DeviceItem} from '../components/DeviceItem';
-import {socketManager} from '../services/socket';
-import {Socket} from 'socket.io-client';
+import {useSocket} from '../contexts/SocketContext';
 
-export const DeviceListScreen = () => {
-  const [devices, setDevices] = useState<Device[]>([]);
-
-  const setupSocketListeners = useCallback((socket: Socket) => {
-    socket.emit('getDevices');
-
-    socket.on('deviceList', (deviceList: Device[]) => {
-      setDevices(deviceList);
-    });
-
-    socket.on('deviceUpdated', (updatedDevice: Device) => {
-      setDevices(prevDevices =>
-        prevDevices.map(device =>
-          device.id === updatedDevice.id ? updatedDevice : device,
-        ),
-      );
-    });
-  }, []);
+export const DeviceListScreen: React.FC = () => {
+  const devices = useSelector((state: RootState) => state.devices.devices);
+  const {isConnected, getDevices, toggleDevice} = useSocket();
 
   useEffect(() => {
-    let socket: Socket;
+    if (isConnected) {
+      getDevices();
+    }
+  }, [isConnected, getDevices]);
 
-    const initializeSocket = async () => {
-      try {
-        socket = await socketManager.initSocket();
-        setupSocketListeners(socket);
-      } catch (error) {
-        console.error('Error initializing socket:', error);
-      }
-    };
+  if (!isConnected) {
+    return (
+      <View style={styles.container}>
+        <Text>Connecting...</Text>
+      </View>
+    );
+  }
 
-    initializeSocket();
-
-    return () => {
-      if (socket) {
-        socket.off('deviceList');
-        socket.off('deviceUpdated');
-      }
-    };
-  }, [setupSocketListeners]);
-
-  const toggleDevice = useCallback(
-    (deviceId: string, newState: 'ON' | 'OFF') => {
-      const socket = socketManager.getSocket();
-      socket.emit('toggleDevice', JSON.stringify({deviceId, state: newState}));
-    },
-    [],
-  );
+  console.log({devices});
 
   return (
     <View style={styles.container}>
@@ -71,5 +42,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

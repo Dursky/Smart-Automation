@@ -1,90 +1,127 @@
-import React, {createContext, useState, useEffect, ReactNode} from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
+import {useDispatch, useSelector} from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {User} from '../types';
+import {RootState, AppDispatch} from '../redux/store';
+import {setUser, setToken, logout, setLoading} from '../redux/slices/authSlice';
 import {login, register} from '../services/api';
-import {AxiosError} from 'axios';
 import {socketManager} from '../services/socket';
+import {User} from '../types';
 
-interface AuthContextData {
-  user: User | null;
-  loading: boolean;
+interface AuthContextType {
   signIn: (username: string, password: string) => Promise<void>;
   signUp: (username: string, password: string, email: string) => Promise<void>;
   signOut: () => Promise<void>;
+  user: User | null;
+  loading: boolean;
 }
 
-export const AuthContext = createContext<AuthContextData>(
-  {} as AuthContextData,
-);
+const AuthContext = createContext<AuthContextType>({
+  signIn: async () => {},
+  signUp: async () => {},
+  signOut: async () => {},
+  user: null,
+  loading: true,
+});
 
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({children}) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch<AppDispatch>();
+  const {user, isLoading} = useSelector((state: RootState) => state.auth);
+
+  const loadStoredData = useCallback(async () => {
+    try {
+      const [storedToken, storedUser] = await Promise.all([
+        AsyncStorage.getItem('userToken'),
+        AsyncStorage.getItem('user'),
+      ]);
+
+      if (storedToken && storedUser) {
+        dispatch(setToken(storedToken));
+        dispatch(setUser(JSON.parse(storedUser)));
+
+        await socketManager.initSocket();
+      }
+    } catch (error) {
+      console.error('Error loading stored data:', error);
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     loadStoredData();
-  }, []);
+  }, [loadStoredData]);
 
-  async function loadStoredData() {
-    const storedUser = await AsyncStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  const handleAuthResponse = async (response: {user: any; token: string}) => {
+    if (response.user && response.token) {
+      dispatch(setUser(response.user));
+      dispatch(setToken(response.token));
+
+      await Promise.all([
+        AsyncStorage.setItem('userToken', response.token),
+        AsyncStorage.setItem('user', JSON.stringify(response.user)),
+      ]);
+
+      await socketManager.initSocket();
+    } else {
+      throw new Error('Invalid response from server');
     }
-    setLoading(false);
-  }
+  };
 
-  async function signIn(username: string, password: string) {
+  const signIn = async (username: string, password: string) => {
     try {
       const response = await login(username, password);
-      if (response.user && response.token) {
-        setUser(response.user);
-        await AsyncStorage.setItem('userToken', response.token);
-        await AsyncStorage.setItem('user', JSON.stringify(response.user));
-        await socketManager.initSocket();
-      } else {
-        throw new Error('Invalid response from server');
-      }
+
+      await handleAuthResponse(response);
     } catch (error) {
       console.error('Sign in error:', error);
+
       throw error;
     }
-  }
+  };
 
-  async function signUp(username: string, password: string, email: string) {
+  const signUp = async (username: string, password: string, email: string) => {
     try {
       const response = await register(username, password, email);
 
-      if (response.user && response.token) {
-        setUser(response.user);
-        await AsyncStorage.setItem('userToken', response.token);
-        await AsyncStorage.setItem('user', JSON.stringify(response.user));
-      } else {
-        throw new Error('Invalid response from server');
-      }
+      await handleAuthResponse(response);
     } catch (error) {
-      console.error('Sign up error:', (error as AxiosError).response);
+      console.error('Sign up error:', error);
       throw error;
     }
-  }
+  };
 
-  async function signOut() {
+  const signOut = async () => {
     try {
-      await AsyncStorage.removeItem('userToken');
-      await AsyncStorage.removeItem('user');
+      await Promise.all([
+        AsyncStorage.removeItem('userToken'),
+        AsyncStorage.removeItem('user'),
+        AsyncStorage.removeItem('refreshToken'),
+      ]);
+
       socketManager.closeSocket();
-      setUser(null);
+
+      dispatch(logout());
     } catch (error) {
       console.error('Sign out error:', error);
     }
-  }
+  };
 
   return (
-    <AuthContext.Provider value={{user, loading, signIn, signUp, signOut}}>
+    <AuthContext.Provider
+      value={{signIn, signUp, signOut, user, loading: isLoading}}>
       {children}
     </AuthContext.Provider>
   );
 };
+
+export const useAuth = () => useContext(AuthContext);

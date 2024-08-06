@@ -21,7 +21,7 @@ class SocketManager {
     }
 
     const token = await AsyncStorage.getItem('userToken');
-    console.log(token);
+
     if (!token) {
       throw new Error('No token found');
     }
@@ -42,16 +42,24 @@ class SocketManager {
     return this.socket;
   }
 
-  public getSocket(): Socket {
+  public async getSocket(): Promise<Socket> {
     if (!this.socket) {
-      throw new Error('Socket is not initialized');
+      try {
+        this.socket = await this.initSocket();
+
+        console.log('-> New Socket created');
+      } catch (error) {
+        console.error('-> Failed to create new socket:', error);
+        throw error;
+      }
     }
+
     return this.socket;
   }
-
   public closeSocket() {
     if (this.socket) {
       this.socket.disconnect();
+
       this.socket = null;
     }
   }
